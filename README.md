@@ -11,4 +11,3 @@ The technology stack used:
 - Spring Boot
 - MySQL running in AWS
 - SQS running in AWS
-# searcher-weather
