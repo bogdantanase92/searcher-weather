@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tanaseb.searcherweather.api.model.WeatherDto;
 import com.tanaseb.searcherweather.application.mapper.WeatherMapper;
+import com.tanaseb.searcherweather.application.util.DateGenerator;
 import com.tanaseb.searcherweather.domain.model.WeatherEntity;
 import com.tanaseb.searcherweather.domain.repository.WeatherRepository;
 import com.tanaseb.searcherweather.infrastructure.openweather.model.OpenWeather;
@@ -36,13 +37,15 @@ public class WeatherService {
 	private final WeatherRepository weatherRepository;
 	private final OpenWeatherService openWeatherService;
 	private final SqsSenderService sqsSenderService;
+	private final DateGenerator dateGenerator;
 	private final ObjectMapper mapper;
 
 	public WeatherService(WeatherRepository weatherRepository, OpenWeatherService openWeatherService,
-	                      SqsSenderService sqsSenderService, ObjectMapper mapper) {
+	                      SqsSenderService sqsSenderService, DateGenerator dateGenerator, ObjectMapper mapper) {
 		this.weatherRepository = weatherRepository;
 		this.openWeatherService = openWeatherService;
 		this.sqsSenderService = sqsSenderService;
+		this.dateGenerator = dateGenerator;
 		this.mapper = mapper;
 	}
 
@@ -59,7 +62,7 @@ public class WeatherService {
 				});
 	}
 
-	public Optional<WeatherEntity> findOrUpdate(String city) {
+	private Optional<WeatherEntity> findOrUpdate(String city) {
 		Optional<WeatherEntity> entity = weatherRepository.findByCity(city);
 
 		if (entity.isPresent()) {
@@ -84,22 +87,22 @@ public class WeatherService {
 		return entityAge > ((long) noOfMinutes * 60 * 1000);
 	}
 
-	public WeatherEntity update(WeatherEntity entity, OpenWeather openWeather) {
+	private WeatherEntity update(WeatherEntity entity, OpenWeather openWeather) {
 		entity.setTemperature(openWeather.getMain().getTemp());
-		entity.setTimestamp(new Date());
+		entity.setTimestamp(dateGenerator.now());
 
 		log.info("Updating city: {} in db", openWeather.getName());
 		return weatherRepository.save(entity);
 	}
 
-	public WeatherEntity create(String city) {
+	private WeatherEntity create(String city) {
 		OpenWeather openWeather = openWeatherService.get(city);
 
 		WeatherEntity entity = new WeatherEntity();
 		entity.setCity(openWeather.getName());
 		entity.setCountry(openWeather.getSys().getCountry());
 		entity.setTemperature(openWeather.getMain().getTemp());
-		entity.setTimestamp(new Date());
+		entity.setTimestamp(dateGenerator.now());
 
 		log.info("Creating city: {} in db", openWeather.getName());
 		return weatherRepository.save(entity);
